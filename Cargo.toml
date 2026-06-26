@@ -1,0 +1,31 @@
+[package]
+name    = "afrim-fcitx5"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+afrim-config       = { version = "0.4.7" }
+afrim-preprocessor = { version = "0.6.3" }
+afrim-translator   = { version = "0.2.3" }
+indexmap           = "2"
+keyboard-types = "0.8.3"
+
+[features]
+# ---------------------------------------------------------------------------
+# Default: Rhai scripted translators + string-similarity auto-corrections.
+# ---------------------------------------------------------------------------
+default = ["rhai", "strsim"]
+
+# Pass through the afrim-preprocessor `inhibit` feature.
+# Enable for non-Latin scripts (Amharic, etc.) to prevent intermediate Latin
+# characters from ever reaching the application.
+inhibit = ["afrim-preprocessor/inhibit"]
+
+# Rhai scripted translators (required for [translators] blocks in config).
+rhai = ["afrim-config/rhai", "afrim-translator/rhai"]
+
+# String-similarity fuzzy matching / auto-correction in the translator.
+strsim = ["afrim-translator/strsim"]

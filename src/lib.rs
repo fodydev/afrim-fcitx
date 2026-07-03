@@ -208,8 +208,7 @@ fn encode_commands(commands: &[Command]) -> String {
         .map(|cmd| match cmd {
             Command::Pause => "pause".to_owned(),
             Command::Resume => "resume".to_owned(),
-            Command::Delete => "delete".to_owned(),
-            Command::CleanDelete => "clean_delete".to_owned(),
+            Command::Delete(text) => format!("delete:{text}"),
             Command::CommitText(text) => format!("commit:{text}"),
         })
         .collect::<Vec<_>>()

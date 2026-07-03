@@ -67,6 +67,7 @@ public:
 private:
     fcitx::Instance  *instance_;
     AfrimRustEngine  *engine_ = nullptr;
+    std::string output;
 
     /** Clear preedit + candidates and notify fcitx5. */
     void clearUI(fcitx::InputContext *ic);

@@ -212,6 +212,7 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
 
     char *cmds = afrim_engine_process_key(
         engine_, sym, modState, /*is_pressed=*/1, keyStr.c_str());
+    FCITX_INFO() << "[afrim] Cursor: " << afrim_engine_get_input(engine_);
 
     const bool hasCommands = cmds && *cmds;
 
@@ -223,7 +224,11 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
     // Absorb the key event if the engine was or is now active, or if it
     // generated explicit commands (sequence match).
     if (hadInput || hasInput || hasCommands) {
+    	output.append(keyStr.c_str());
         applyCommands(ic, cmds);
+	if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
+	    ic->commitString(output);
+	}
         event.filterAndAccept();
     }
 
@@ -244,9 +249,15 @@ void AfrimInputMethodEngine::applyCommands(fcitx::InputContext *ic,
     std::istringstream stream(cmds);
     std::string        line;
     while (std::getline(stream, line)) {
+    	FCITX_INFO() << "[afrim] Executing command: " << line;
+    	FCITX_INFO() << "[afrim] Before: " << output;
         if (line.compare(0, 7, "commit:") == 0) {
-            ic->commitString(line.substr(7));
-        }
+            output.append(line.substr(7));
+            // ic->commitString(line.substr(7));
+        } else if (line.compare(0, 7, "delete:") == 0) {
+	    output = output.substr(0, output.size() - line.substr(7).size());
+	}
+    	FCITX_INFO() << "[afrim] After: " << output;
         // pause, resume, delete, clean_delete → handled implicitly by preedit.
     }
 }
@@ -259,11 +270,14 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     std::string input    = inputBuf ? inputBuf : "";
     afrim_string_free(inputBuf);
 
-    fcitx::Text preedit;
-    if (!input.empty()) {
-        preedit.append(input, fcitx::TextFormatFlag::Underline);
-        preedit.setCursor(static_cast<int>(input.size()));
+    // Check if an output should be display
+    if (input.empty()) {
+    	output.clear();
     }
+
+    fcitx::Text preedit;
+    preedit.append(output, fcitx::TextFormatFlag::Underline);
+    preedit.setCursor(static_cast<int>(output.size()));
     ic->inputPanel().setClientPreedit(preedit);
     ic->updatePreedit();
 
@@ -307,6 +321,7 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
 }
 
 void AfrimInputMethodEngine::clearUI(fcitx::InputContext *ic) {
+    output.clear();
     ic->inputPanel().reset();
     ic->updatePreedit();
     ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);

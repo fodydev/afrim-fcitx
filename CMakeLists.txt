@@ -33,12 +33,12 @@ else()
 endif()
 
 set(CARGO_MANIFEST  "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
-set(RUST_STATICLIB  "${CMAKE_CURRENT_SOURCE_DIR}/target/release/libafrim_fcitx5.a")
+set(RUST_STATICLIB  "${CMAKE_CURRENT_SOURCE_DIR}/target/debug/libafrim_fcitx5.a")
 
 add_custom_command(
     OUTPUT "${RUST_STATICLIB}"
     COMMAND cargo build
-            --release
+            --debug
             --manifest-path "${CARGO_MANIFEST}"
             --no-default-features
             --features "${_CARGO_FEATURES}"

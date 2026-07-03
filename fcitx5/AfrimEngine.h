@@ -22,7 +22,7 @@
  *
  * Design summary
  * ──────────────
- * • One `AfrimRustEngine*` is shared for the lifetime of the addon.  Its
+ * • One `AfrimEngine*` is shared for the lifetime of the addon.  Its
  *   state is reset whenever the active InputContext changes (deactivate /
  *   reset events).
  *
@@ -62,11 +62,11 @@ public:
     void updateUI(fcitx::InputContext *ic);
 
     /** Raw pointer to the Rust engine (needed by AfrimCandidateWord). */
-    AfrimRustEngine *rustEngine() noexcept { return engine_; }
+    AfrimEngine *rustEngine() noexcept { return engine_; }
 
 private:
     fcitx::Instance  *instance_;
-    AfrimRustEngine  *engine_ = nullptr;
+    AfrimEngine  *engine_ = nullptr;
     std::string output;
 
     /** Clear preedit + candidates and notify fcitx5. */

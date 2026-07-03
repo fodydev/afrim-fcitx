@@ -1,5 +1,5 @@
 [package]
-name    = "afrim-fcitx5"
+name    = "afrim_capi"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,9 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
-afrim-config       = { version = "0.4.7" }
-afrim-preprocessor = { version = "0.6.3" }
-afrim-translator   = { version = "0.2.3" }
+afrim-config       = { path = "../../afrim/config", version = "0.4.7" }
+afrim-preprocessor = { path = "../../afrim/engine/preprocessor", version = "0.6.3" }
+afrim-translator   = { path = "../../afrim/engine/translator", version = "0.2.3" }
 indexmap           = "2"
 keyboard-types = "0.8.3"
 

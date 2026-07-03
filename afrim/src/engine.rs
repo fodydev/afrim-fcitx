@@ -108,8 +108,6 @@ impl AfrimEngine {
             ..Default::default()
         };
 
-        dbg!(&event);
-
         self.preprocessor.process(event);
         self.drain_queue()
     }

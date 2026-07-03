@@ -226,9 +226,6 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
     if (hadInput || hasInput || hasCommands) {
     	output.append(keyStr.c_str());
         applyCommands(ic, cmds);
-	if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
-	    ic->commitString(output);
-	}
         event.filterAndAccept();
     }
 
@@ -293,7 +290,7 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
         std::istringstream cs(candStr);
         std::string        line;
         while (std::getline(cs, line)) {
-            // Format: code\tremaining_code\tcan_commit\ttext1|text2|…
+            // Format: code\tremaining_code\tcan_commit\ttext1|text2|...
             std::vector<std::string> parts;
             {
                 std::istringstream ls(line);

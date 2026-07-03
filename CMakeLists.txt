@@ -1,11 +1,14 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.22)
 project(afrim_fcitx5 VERSION 0.1.0 LANGUAGES C CXX)
+set(AFRIM_LIBNAME libafrim)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# ── Dependencies ─────────────────────────────────────────────────────────────
+add_compile_options(-Wall -Wextra)
+
+# Dependencies
 find_package(PkgConfig REQUIRED)
 find_package(ECM REQUIRED 1.0.0)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
@@ -15,7 +18,8 @@ find_package(Fcitx5Core REQUIRED)
 include(GNUInstallDirs)
 include(FeatureSummary)
 
-# ── Rust / Cargo build ───────────────────────────────────────────────────────
+# Rust library
+
 # Feature selection:
 #   cmake .. -DAFRIM_INHIBIT=ON          # enable inhibit for non-Latin scripts
 #   cmake .. -DAFRIM_FEATURES="rhai"     # override extra features
@@ -32,53 +36,58 @@ else()
     set(_CARGO_FEATURES "${AFRIM_FEATURES}")
 endif()
 
-set(CARGO_MANIFEST  "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
-set(RUST_STATICLIB  "${CMAKE_CURRENT_SOURCE_DIR}/target/debug/libafrim_fcitx5.a")
+# Corrosion tools
+include(FetchContent)
 
-add_custom_command(
-    OUTPUT "${RUST_STATICLIB}"
-    COMMAND cargo build
-            --debug
-            --manifest-path "${CARGO_MANIFEST}"
-            --no-default-features
-            --features "${_CARGO_FEATURES}"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    COMMENT "Compiling Rust afrim-fcitx5 static library…"
-    VERBATIM
+if(EXISTS "${CORROSION_SRC_DIR}")
+	add_subdirectory("${CORROSION_SRC_DIR}")
+else()
+	FetchContent_Declare(
+	    Corrosion
+	    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+	    GIT_TAG v0.6 # Optionally specify a commit hash, version tag or branch here
+	)
+	FetchContent_MakeAvailable(Corrosion)
+endif()
+
+# Import targets defined in a package or workspace manifest `Cargo.toml` file
+corrosion_import_crate(
+	MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/afrim/Cargo.toml"
+	FEATURES ${_CARGO_FEATURES}
 )
-add_custom_target(afrim_rust_build ALL DEPENDS "${RUST_STATICLIB}")
-
-# ── C++ fcitx5 shared library ─────────────────────────────────────────────────
-add_library(afrim-fcitx5 MODULE
-    fcitx5/AfrimEngine.cpp
+corrosion_experimental_cbindgen(
+        TARGET afrim_capi
+        HEADER_NAME afrim_ffi.h
 )
-set_target_properties(afrim-fcitx5 PROPERTIES PREFIX "")
 
-add_dependencies(afrim-fcitx5 afrim_rust_build)
+# C++ library
+add_library(${AFRIM_LIBNAME} MODULE
+    "${CMAKE_CURRENT_SOURCE_DIR}/fcitx5/AfrimEngine.cpp"
+)
+set_target_properties(${AFRIM_LIBNAME} PROPERTIES PREFIX "")
 
-target_include_directories(afrim-fcitx5 PRIVATE
+add_dependencies(${AFRIM_LIBNAME} afrim_capi)
+
+target_include_directories(${AFRIM_LIBNAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/fcitx5"
 )
-
-target_link_libraries(afrim-fcitx5 PRIVATE
+target_link_libraries(${AFRIM_LIBNAME} PRIVATE
     Fcitx5::Core
-    "${RUST_STATICLIB}"
-    # System libraries needed by the Rust standard library.
-    pthread
-    dl
-    m
+    afrim_capi
 )
 
-# ── Installation ─────────────────────────────────────────────────────────────
-install(TARGETS afrim-fcitx5
+# Installation
+install(TARGETS ${AFRIM_LIBNAME}
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/fcitx5"
 )
 
-install(FILES addon/afrim.conf
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/share/addon/afrim.conf.in" "${CMAKE_CURRENT_BINARY_DIR}/addon/afrim.conf")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/addon/afrim.conf"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/fcitx5/addon"
 )
 
-install(FILES inputmethod/afrim.conf
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/share/inputmethod/afrim.conf.in" "${CMAKE_CURRENT_BINARY_DIR}/inputmethod/afrim.conf")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/inputmethod/afrim.conf"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/fcitx5/inputmethod"
 )
 

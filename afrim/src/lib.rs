@@ -27,8 +27,8 @@
 ///       <code>\t<remaining_code>\t<can_commit:0|1>\t<text1>|<text2>|…
 mod engine;
 
-use engine::AfrimEngine;
 use afrim_preprocessor::Command;
+use engine::AfrimEngine;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
@@ -110,9 +110,7 @@ pub extern "C" fn afrim_engine_process_key(
     } else {
         unsafe { CStr::from_ptr(key_str).to_str().unwrap_or("") }
     };
-    let commands = unsafe {
-        (*engine).process_key(keysym, modifier_state, is_pressed != 0, key_s)
-    };
+    let commands = unsafe { (*engine).process_key(keysym, modifier_state, is_pressed != 0, key_s) };
     make_cstring(&encode_commands(&commands))
 }
 

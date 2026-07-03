@@ -1,9 +1,9 @@
 use afrim_config::Config;
 use afrim_preprocessor::{utils, Command, Preprocessor};
+use afrim_preprocessor::{Key, KeyState, KeyboardEvent, NamedKey};
 use afrim_translator::{Predicate, Translator};
-use std::{path::Path, rc::Rc};
 use keyboard_types::Modifiers;
-use afrim_preprocessor::{Key, KeyboardEvent, KeyState, NamedKey};
+use std::{path::Path, rc::Rc};
 
 // ---------------------------------------------------------------------------
 // Public engine type
@@ -21,8 +21,7 @@ pub struct AfrimEngine {
 impl AfrimEngine {
     /// Load config from `config_path` and build the engine.
     pub fn from_config_path(config_path: &str) -> Result<Self, String> {
-        let config = Config::from_file(Path::new(config_path))
-            .map_err(|e| e.to_string())?;
+        let config = Config::from_file(Path::new(config_path)).map_err(|e| e.to_string())?;
 
         let auto_commit = config
             .core
@@ -162,10 +161,7 @@ impl AfrimEngine {
 /// Map an X11 keysym (plus an optional UTF-8 key label from fcitx5) to a
 /// `keyboard_types::Key`.  Returns `None` for keys that afrim should not
 /// see (function keys, media keys, modifier-only events, etc.).
-fn keysym_to_key(
-    keysym: u32,
-    key_str: &str,
-) -> Option<afrim_preprocessor::Key> {
+fn keysym_to_key(keysym: u32, key_str: &str) -> Option<afrim_preprocessor::Key> {
     let key = match keysym {
         // ── Named keys that afrim/keyboard_types recognises ──────────────
         0xFF08 => Key::Named(NamedKey::Backspace),

@@ -29,6 +29,7 @@ public:
           text_(std::move(text)) {}
 
     void select(fcitx::InputContext *ic) const override {
+	ic->commitString(text_);
         char *cmds =
             afrim_engine_commit_candidate(engine_->rustEngine(), text_.c_str());
         if (cmds) {
@@ -204,6 +205,8 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
             event.filterAndAccept();
             return;
         }
+    } else if (sym == FcitxKey_BackSpace) {
+    	return;
     }
 
     // ── Feed the key to the Rust engine ─────────────────────────────────
@@ -226,6 +229,9 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
     if (hadInput || hasInput || hasCommands) {
     	output.append(keyStr.c_str());
         applyCommands(ic, cmds);
+	if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
+	    ic->commitString(output);
+	}
         event.filterAndAccept();
     }
 
@@ -252,7 +258,9 @@ void AfrimInputMethodEngine::applyCommands(fcitx::InputContext *ic,
             output.append(line.substr(7));
             // ic->commitString(line.substr(7));
         } else if (line.compare(0, 7, "delete:") == 0) {
-	    output = output.substr(0, output.size() - line.substr(7).size());
+	    int step = line.substr(6).size() - 1;
+    	FCITX_INFO() << "[afrim] Step: " << step;
+	    output = output.substr(0, output.size() - (step ? step : 1));
 	}
     	FCITX_INFO() << "[afrim] After: " << output;
         // pause, resume, delete, clean_delete → handled implicitly by preedit.

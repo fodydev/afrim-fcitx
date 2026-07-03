@@ -108,6 +108,7 @@ impl AfrimEngine {
             ..Default::default()
         };
 
+        dbg!(&event);
         self.preprocessor.process(event);
         self.drain_queue()
     }
@@ -139,6 +140,7 @@ impl AfrimEngine {
 
     /// Clear internal state — called when the input context loses focus.
     pub fn reset(&mut self) {
+        self.preprocessor.process(Default::default());
         self.preprocessor.clear_queue();
     }
 

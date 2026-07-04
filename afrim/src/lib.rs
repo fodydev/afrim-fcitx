@@ -16,10 +16,10 @@
 ///       resume
 ///
 ///   Possible command lines:
-///     `pause`         – start the process of commands
-///     `resume`        – end the process of commands
-///     `delete:<text>` – delete characters from the application text
-///     `commit:<text>` – commit `<text>` to the application
+///     `pause`         - start the process of commands
+///     `resume`        - end the process of commands
+///     `delete:<text>` - delete characters from the application text
+///     `commit:<text>` - commit `<text>` to the application
 ///
 /// `afrim_engine_get_candidates` returns one line per `Predicate`:
 ///
@@ -94,8 +94,8 @@ pub unsafe extern "C" fn afrim_engine_reset(engine: *mut AfrimEngine) {
 ///
 /// Parameters
 /// ----------
-/// `keysym`         – X11 keysym value (e.g. 0xFF08 = BackSpace).
-/// `key_str`        – UTF-8 string produced by the key (may be "").
+/// `keysym`         - X11 keysym value (e.g. 0xFF08 = BackSpace).
+/// `key_str`        - UTF-8 string produced by the key (may be "").
 ///
 /// Returns a newline-separated command string (see module doc). The returned
 /// pointer is never NULL (empty string on no-op). Caller frees with

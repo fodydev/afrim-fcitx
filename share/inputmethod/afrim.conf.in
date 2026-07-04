@@ -1,0 +1,6 @@
+[InputMethod]
+Name=Afrim
+Icon=input-keyboard
+Label=afrim
+LangCode=en_US
+Addon=afrim

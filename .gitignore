@@ -1,0 +1,11 @@
+# CMake
+/build
+
+# Vim
+*.sw[pon]
+*~
+vim.core
+
+# Cargo
+Cargo.lock
+target

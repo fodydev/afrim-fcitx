@@ -1,0 +1,19 @@
+[package]
+name    = "afrim_capi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+afrim-config       = { git = "https://github.com/fodydev/afrim.git", rev = "d3d2122" }
+afrim-preprocessor = { git = "https://github.com/fodydev/afrim.git", rev = "d3d2122" }
+afrim-translator   = { git = "https://github.com/fodydev/afrim.git", rev = "d3d2122" }
+indexmap           = "2"
+
+[features]
+default = ["rhai", "strsim"]
+inhibit = ["afrim-preprocessor/inhibit"]
+rhai = ["afrim-config/rhai", "afrim-translator/rhai"]
+strsim = ["afrim-translator/strsim"]

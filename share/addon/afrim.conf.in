@@ -1,0 +1,12 @@
+[Addon]
+Name=Afrim
+Comment=Input method engine for African and other language scripts
+Category=InputMethod
+Type=SharedLibrary
+Library=${AFRIM_LIBNAME}
+OnDemand=True
+Version=${PROJECT_VERSION}
+
+[Addon/Dependencies]
+0=core:5.1.13
+

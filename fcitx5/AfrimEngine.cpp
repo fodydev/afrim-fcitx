@@ -17,8 +17,9 @@
 // Anonymous namespace
 namespace {
 
-// AfrimCandidateWord
 /**
+ * AfrimCandidateWord
+ *
  * A candidate word that calls back into AfrimInputMethodEngine when selected.
  */
 class AfrimCandidateWord final : public fcitx::CandidateWord {
@@ -42,9 +43,6 @@ private:
     AfrimInputMethodEngine *engine_;
     std::string text_;
 };
-
-// ── Helpers
-// ──────────────────────────────────────────────────────────────────
 
 /**
  * Determine the UTF-8 string produced by `key` from fcitx5's key event.
@@ -150,12 +148,9 @@ void AfrimInputMethodEngine::activate(const fcitx::InputMethodEntry &,
     // next deactivate / reset.
 }
 
-void AfrimInputMethodEngine::deactivate(const fcitx::InputMethodEntry &,
+void AfrimInputMethodEngine::deactivate(const fcitx::InputMethodEntry &im_entry,
                                         fcitx::InputContextEvent &event) {
-    if (engine_) {
-        afrim_engine_reset(engine_);
-    }
-    clearUI(event.inputContext());
+    reset(im_entry, event);
 }
 
 void AfrimInputMethodEngine::reset(const fcitx::InputMethodEntry &,
@@ -163,15 +158,16 @@ void AfrimInputMethodEngine::reset(const fcitx::InputMethodEntry &,
     if (engine_) {
         afrim_engine_reset(engine_);
     }
+    output.clear();
     clearUI(event.inputContext());
 }
 
-void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
+void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
                                       fcitx::KeyEvent &event) {
     if (!engine_)
         return;
 
-    // We only intercept key-press events.  Releases pass through unchanged.
+    // We only intercept key-press events. Releases pass through unchanged.
     if (event.isRelease())
         return;
 
@@ -179,20 +175,18 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
     const auto &key = event.key();
     const uint32_t sym = static_cast<uint32_t>(key.sym());
 
-    // ── Snapshot preedit before processing ──────────────────────────────
     // If we already have active input, we absorb the event regardless of
-    // whether the new key advances the sequence.  This ensures that Escape,
+    // whether the new key advances the sequence. This ensures that Escape,
     // BackSpace, and arrow keys during a sequence are handled by us.
     char *preBuf = afrim_engine_get_input(engine_);
     bool hadInput = preBuf && *preBuf;
     afrim_string_free(preBuf);
 
-    // ── Special keys while a sequence is active ──────────────────────────
+    // Special keys while a sequence is active
     if (hadInput) {
         if (sym == FcitxKey_Escape) {
             // Abort the current sequence without committing anything.
-            afrim_engine_reset(engine_);
-            clearUI(ic);
+            reset(im_entry, event);
             event.filterAndAccept();
             return;
         }
@@ -203,37 +197,37 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
                 ic->commitString(raw);
             }
             afrim_string_free(raw);
-            afrim_engine_reset(engine_);
-            clearUI(ic);
+            reset(im_entry, event);
             event.filterAndAccept();
             return;
         }
-    } else if (sym == FcitxKey_BackSpace) {
+        if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
+            ic->commitString(output);
+            reset(im_entry, event);
+            return;
+        }
+
+    }
+    // Let pass the backspace event when the input is not active.
+    else if (sym == FcitxKey_BackSpace) {
         return;
     }
-
-    // ── Feed the key to the Rust engine ─────────────────────────────────
+    // Feed the key to the Rust engine.
     const std::string keyStr = keyToUtf8(key);
-    const uint32_t modState = static_cast<uint32_t>(key.states());
 
+    FCITX_INFO() << "[afrim] process: " << sym << " (" << keyStr << ")";
     char *cmds = afrim_engine_process_key(engine_, sym, keyStr.c_str());
-    FCITX_INFO() << "[afrim] Cursor: " << afrim_engine_get_input(engine_);
+    FCITX_INFO() << "[afrim] cursor: " << afrim_engine_get_input(engine_);
+    output.append(keyStr);
+    applyCommands(ic, cmds);
 
-    const bool hasCommands = cmds && *cmds;
-
-    // ── Check preedit after processing ───────────────────────────────────
+    // Check if the input changed after processing
     char *postBuf = afrim_engine_get_input(engine_);
     bool hasInput = postBuf && *postBuf;
     afrim_string_free(postBuf);
 
-    // Absorb the key event if the engine was or is now active, or if it
-    // generated explicit commands (sequence match).
-    if (hadInput || hasInput || hasCommands) {
-        output.append(keyStr.c_str());
-        applyCommands(ic, cmds);
-        if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
-            ic->commitString(output);
-        }
+    // Absorb the key event if the engine was or is now active.
+    if (hadInput || hasInput) {
         event.filterAndAccept();
     }
 
@@ -241,33 +235,26 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &,
     updateUI(ic);
 }
 
-// ── Internal helpers
-// ─────────────────────────────────────────────────────────
-
 void AfrimInputMethodEngine::applyCommands(fcitx::InputContext *ic,
                                            const char *cmds) {
     if (!cmds || !*cmds)
         return;
 
-    // In the preedit model raw characters never reach the application, so
-    // `delete` / `clean_delete` need not send BackSpace; the preedit string is
-    // refreshed automatically in updateUI().  Only `commit:<text>` requires an
-    // explicit action.
+    // The preedit string is refreshed automatically in updateUI().
+    // Only `commit:<text>` requires an explicit action.
     std::istringstream stream(cmds);
     std::string line;
     while (std::getline(stream, line)) {
-        FCITX_INFO() << "[afrim] Executing command: " << line;
-        FCITX_INFO() << "[afrim] Before: " << output;
+        FCITX_INFO() << "[afrim] command: " << line;
+        FCITX_INFO() << "[afrim] output before: " << output;
         if (line.compare(0, 7, "commit:") == 0) {
             output.append(line.substr(7));
-            // ic->commitString(line.substr(7));
         } else if (line.compare(0, 7, "delete:") == 0) {
             int step = line.substr(6).size() - 1;
-            FCITX_INFO() << "[afrim] Step: " << step;
+            FCITX_INFO() << "[afrim] delele step: " << step;
             output = output.substr(0, output.size() - (step ? step : 1));
         }
-        FCITX_INFO() << "[afrim] After: " << output;
-        // pause, resume, delete, clean_delete → handled implicitly by preedit.
+        FCITX_INFO() << "[afrim] output after: " << output;
     }
 }
 
@@ -275,12 +262,12 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     if (!engine_)
         return;
 
-    // ── Preedit ──────────────────────────────────────────────────────────
+    // Preedit
     char *inputBuf = afrim_engine_get_input(engine_);
     std::string input = inputBuf ? inputBuf : "";
     afrim_string_free(inputBuf);
 
-    // Check if an output should be display
+    // Clear the output if input is empty.
     if (input.empty()) {
         output.clear();
     }
@@ -291,7 +278,7 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     ic->inputPanel().setClientPreedit(preedit);
     ic->updatePreedit();
 
-    // ── Candidate list ───────────────────────────────────────────────────
+    // Candidate list
     char *candBuf = afrim_engine_get_candidates(engine_);
     std::string candStr = candBuf ? candBuf : "";
     afrim_string_free(candBuf);
@@ -320,9 +307,10 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
             std::istringstream ts(textsField);
             std::string text;
             while (std::getline(ts, text, '|')) {
-                if (!text.empty()) {
-                    candidateList->append<AfrimCandidateWord>(this, text);
-                }
+                if (text.empty())
+                    continue;
+
+                candidateList->append<AfrimCandidateWord>(this, text);
             }
         }
     }
@@ -332,12 +320,10 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
 }
 
 void AfrimInputMethodEngine::clearUI(fcitx::InputContext *ic) {
-    output.clear();
     ic->inputPanel().reset();
     ic->updatePreedit();
     ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 }
 
-// ── Addon entry point
-// ────────────────────────────────────────────────────────
+// Addon entry point
 FCITX_ADDON_FACTORY(AfrimEngineFactory)

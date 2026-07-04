@@ -10,42 +10,22 @@
 
 #include "afrim_ffi.h"
 
-// ── Forward declaration
-// ────────────────────────────────────────────────────── class
-// AfrimCandidateWord;
-
-// ── Main engine class
-// ────────────────────────────────────────────────────────
+// Forward declaration
 
 /**
  * AfrimInputMethodEngine
  *
- * Implements fcitx5's InputMethodEngineV2 interface backed by the Rust
- * afrim-fcitx5 static library via the C FFI layer in afrim_ffi.h.
- *
- * Design summary
- * ──────────────
- * • One `AfrimEngine*` is shared for the lifetime of the addon.  Its
- *   state is reset whenever the active InputContext changes (deactivate /
- *   reset events).
- *
- * • A preedit-buffer approach is used: raw keystrokes are NEVER forwarded to
- *   the application.  Instead they appear in the inline preedit string
- *   (underlined).  When a sequence matches, the preedit is cleared and the
- *   translated text is committed to the application via commitString().
- *
- * • Candidate words appear in the standard fcitx5 candidate panel.  Selecting
- *   one calls commit_candidate() on the Rust engine.
+ * Implements fcitx5's InputMethodEngineV2 interface.
  */
 class AfrimInputMethodEngine final : public fcitx::InputMethodEngineV2 {
 public:
     explicit AfrimInputMethodEngine(fcitx::Instance *instance);
     ~AfrimInputMethodEngine() override;
 
-    // ── InputMethodEngineV2 ──────────────────────────────────────────────
+    // InputMethodEngineV2
     std::vector<fcitx::InputMethodEntry> listInputMethods() override;
 
-    // ── InputMethodEngine ────────────────────────────────────────────────
+    // InputMethodEngine
     void activate(const fcitx::InputMethodEntry &entry,
                   fcitx::InputContextEvent &event) override;
     void deactivate(const fcitx::InputMethodEntry &entry,
@@ -55,8 +35,6 @@ public:
     void reset(const fcitx::InputMethodEntry &entry,
                fcitx::InputContextEvent &event) override;
     void save() override {}
-
-    // ── Internal helpers (used by AfrimCandidateWord) ────────────────────
 
     /** Apply a newline-separated Rust command string to `ic`. */
     void applyCommands(fcitx::InputContext *ic, const char *cmds);
@@ -76,9 +54,7 @@ private:
     void clearUI(fcitx::InputContext *ic);
 };
 
-// ── Addon factory
-// ────────────────────────────────────────────────────────────
-
+// Addon factory
 class AfrimEngineFactory : public fcitx::AddonFactory {
 public:
     fcitx::AddonInstance *create(fcitx::AddonManager *manager) override {

@@ -11,21 +11,9 @@ afrim-config       = { path = "../../afrim/config", version = "0.4.7" }
 afrim-preprocessor = { path = "../../afrim/engine/preprocessor", version = "0.6.3" }
 afrim-translator   = { path = "../../afrim/engine/translator", version = "0.2.3" }
 indexmap           = "2"
-keyboard-types = "0.8.3"
 
 [features]
-# ---------------------------------------------------------------------------
-# Default: Rhai scripted translators + string-similarity auto-corrections.
-# ---------------------------------------------------------------------------
 default = ["rhai", "strsim"]
-
-# Pass through the afrim-preprocessor `inhibit` feature.
-# Enable for non-Latin scripts (Amharic, etc.) to prevent intermediate Latin
-# characters from ever reaching the application.
 inhibit = ["afrim-preprocessor/inhibit"]
-
-# Rhai scripted translators (required for [translators] blocks in config).
 rhai = ["afrim-config/rhai", "afrim-translator/rhai"]
-
-# String-similarity fuzzy matching / auto-correction in the translator.
 strsim = ["afrim-translator/strsim"]

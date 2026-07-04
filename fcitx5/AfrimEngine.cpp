@@ -218,13 +218,20 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
     FCITX_INFO() << "[afrim] process: " << sym << " (" << keyStr << ")";
     char *cmds = afrim_engine_process_key(engine_, sym, keyStr.c_str());
     FCITX_INFO() << "[afrim] cursor: " << afrim_engine_get_input(engine_);
-    output.append(keyStr);
-    applyCommands(ic, cmds);
 
     // Check if the input changed after processing
     char *postBuf = afrim_engine_get_input(engine_);
     bool hasInput = postBuf && *postBuf;
     afrim_string_free(postBuf);
+
+    // Clear the output if input is empty.
+    if (hasInput) {
+    	output.append(keyStr);
+    } else {
+    	output.clear();
+    }
+
+    applyCommands(ic, cmds);
 
     // Absorb the key event if the engine was or is now active.
     if (hadInput || hasInput) {
@@ -266,11 +273,6 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     char *inputBuf = afrim_engine_get_input(engine_);
     std::string input = inputBuf ? inputBuf : "";
     afrim_string_free(inputBuf);
-
-    // Clear the output if input is empty.
-    if (input.empty()) {
-        output.clear();
-    }
 
     fcitx::Text preedit;
     preedit.append(output, fcitx::TextFormatFlag::Underline);

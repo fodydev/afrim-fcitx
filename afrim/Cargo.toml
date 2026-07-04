@@ -7,9 +7,9 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
-afrim-config       = { path = "../../afrim/config", version = "0.4.7" }
-afrim-preprocessor = { path = "../../afrim/engine/preprocessor", version = "0.6.3" }
-afrim-translator   = { path = "../../afrim/engine/translator", version = "0.2.3" }
+afrim-config       = { git = "https://github.com/fodydev/afrim.git", rev = "d3d2122" }
+afrim-preprocessor = { git = "https://github.com/fodydev/afrim.git", rev = "d3d2122" }
+afrim-translator   = { git = "https://github.com/fodydev/afrim.git", rev = "d3d2122" }
 indexmap           = "2"
 
 [features]

@@ -24,24 +24,39 @@ namespace {
  */
 class AfrimCandidateWord final : public fcitx::CandidateWord {
 public:
-    AfrimCandidateWord(AfrimInputMethodEngine *engine, std::string text)
-        : fcitx::CandidateWord(fcitx::Text(text)), engine_(engine),
+    AfrimCandidateWord(AfrimInputMethodEngine *engine, std::string text,
+                       std::string remCode)
+        : fcitx::CandidateWord(makeText(text, remCode)), engine_(engine),
           text_(std::move(text)) {}
 
     void select(fcitx::InputContext *ic) const override {
+        // Commit the candidate to the user.
         ic->commitString(text_);
+
+        // Commit the candidate to afrim only to clear the input.
         char *cmds =
             afrim_engine_commit_candidate(engine_->rustEngine(), text_.c_str());
         if (cmds) {
             engine_->applyCommands(ic, cmds);
             afrim_string_free(cmds);
         }
+
         engine_->updateUI(ic);
     }
 
 private:
     AfrimInputMethodEngine *engine_;
     std::string text_;
+
+    static fcitx::Text makeText(const std::string &text,
+                                const std::string &remCode) {
+        fcitx::Text ftext;
+        ftext.append(text, fcitx::TextFormatFlag::Bold);
+        ftext.append(" ~ ", fcitx::TextFormatFlag::NoFlag);
+        ftext.append(remCode, fcitx::TextFormatFlag::Italic);
+
+        return ftext;
+    }
 };
 
 /**
@@ -190,8 +205,18 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
             event.filterAndAccept();
             return;
         }
+        // Commit the raw input text as-is (no translation).
         if (sym == FcitxKey_Return || sym == FcitxKey_KP_Enter) {
-            // Commit the raw input text as-is (no translation).
+            if (auto *candidateList = ic->inputPanel().candidateList().get()) {
+                int idx = candidateList->cursorIndex();
+
+                if (idx >= 0) {
+                    candidateList->candidate(idx).select(ic);
+                    event.filterAndAccept();
+                    return;
+                }
+            }
+
             char *raw = afrim_engine_get_input(engine_);
             if (raw && *raw) {
                 ic->commitString(raw);
@@ -201,12 +226,35 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
             event.filterAndAccept();
             return;
         }
+        // Commit the output text as-is.
         if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
             ic->commitString(output);
             reset(im_entry, event);
             return;
         }
+        // Navigate between candidates.
+        if (sym == FcitxKey_Left || sym == FcitxKey_KP_Left ||
+            sym == FcitxKey_Right || sym == FcitxKey_KP_Right) {
+            auto *candidateList = ic->inputPanel().candidateList().get();
+            if (candidateList) {
+                auto *movable =
+                    dynamic_cast<fcitx::CursorMovableCandidateList *>(
+                        candidateList);
+                if (movable) {
+                    if (sym == FcitxKey_Left || sym == FcitxKey_KP_Left) {
+                        movable->prevCandidate();
+                    } else {
+                        movable->nextCandidate();
+                    }
 
+                    ic->updateUserInterface(
+                        fcitx::UserInterfaceComponent::InputPanel);
+                }
+            }
+
+            event.filterAndAccept();
+            return;
+        }
     }
     // Let pass the backspace event when the input is not active.
     else if (sym == FcitxKey_BackSpace) {
@@ -226,9 +274,9 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
 
     // Clear the output if input is empty.
     if (hasInput) {
-    	output.append(keyStr);
+        output.append(keyStr);
     } else {
-    	output.clear();
+        output.clear();
     }
 
     applyCommands(ic, cmds);
@@ -247,8 +295,6 @@ void AfrimInputMethodEngine::applyCommands(fcitx::InputContext *ic,
     if (!cmds || !*cmds)
         return;
 
-    // The preedit string is refreshed automatically in updateUI().
-    // Only `commit:<text>` requires an explicit action.
     std::istringstream stream(cmds);
     std::string line;
     while (std::getline(stream, line)) {
@@ -269,10 +315,12 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     if (!engine_)
         return;
 
-    // Preedit
+    // Input
     char *inputBuf = afrim_engine_get_input(engine_);
     std::string input = inputBuf ? inputBuf : "";
     afrim_string_free(inputBuf);
+    ic->inputPanel().setAuxUp(
+        fcitx::Text(input, fcitx::TextFormatFlag::Underline));
 
     fcitx::Text preedit;
     preedit.append(output, fcitx::TextFormatFlag::Underline);
@@ -286,6 +334,7 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     afrim_string_free(candBuf);
 
     auto candidateList = std::make_unique<fcitx::CommonCandidateList>();
+    candidateList->setLayoutHint(fcitx::CandidateLayoutHint::Vertical);
     candidateList->setPageSize(9);
 
     if (!candStr.empty()) {
@@ -305,6 +354,7 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
                 continue;
 
             // Split the texts field on '|' and add one entry per translation.
+            const std::string &remCode = parts[1];
             const std::string &textsField = parts[3];
             std::istringstream ts(textsField);
             std::string text;
@@ -312,7 +362,7 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
                 if (text.empty())
                     continue;
 
-                candidateList->append<AfrimCandidateWord>(this, text);
+                candidateList->append<AfrimCandidateWord>(this, text, remCode);
             }
         }
     }

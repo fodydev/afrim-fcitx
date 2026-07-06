@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fcitx-utils/log.h>
 #include <fcitx/addonfactory.h>
 #include <fcitx/addonmanager.h>
 #include <fcitx/inputmethodengine.h>
@@ -9,6 +10,16 @@
 #include <vector>
 
 #include "afrim_ffi.h"
+
+// Afrim log category.
+#define AFRIM_LOG_CATEGORY afrimLogCategory
+FCITX_DECLARE_LOG_CATEGORY(AFRIM_LOG_CATEGORY);
+#define AFRIM_LOG(LEVEL) FCITX_LOGC(AFRIM_LOG_CATEGORY, LEVEL)
+#define AFRIM_DEBUG() AFRIM_LOG(Debug)
+#define AFRIM_WARN() AFRIM_LOG(Warn)
+#define AFRIM_INFO() AFRIM_LOG(Info)
+#define AFRIM_ERROR() AFRIM_LOG(Error)
+#define AFRIM_FATAL() AFRIM_LOG(Fatal)
 
 // Forward declaration
 
@@ -45,13 +56,13 @@ public:
     /** Raw pointer to the Rust engine (needed by AfrimCandidateWord). */
     AfrimEngine *rustEngine() noexcept { return engine_; }
 
+    /** Clear preedit + candidates and notify fcitx5. */
+    void clearUI(fcitx::InputContext *ic);
+
 private:
     fcitx::Instance *instance_;
     AfrimEngine *engine_ = nullptr;
-    std::string output;
-
-    /** Clear preedit + candidates and notify fcitx5. */
-    void clearUI(fcitx::InputContext *ic);
+    std::string preedit;
 };
 
 // Addon factory

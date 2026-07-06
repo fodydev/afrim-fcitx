@@ -5,7 +5,7 @@
 /// to the caller; the caller **must** free it with `afrim_string_free`.
 ///
 /// ### Wire protocols
-/// 
+///
 /// `afrim_engine_process_key` / `afrim_engine_commit_candidate` return a
 ///   **newline-separated command list**:
 ///
@@ -29,10 +29,9 @@ mod engine;
 mod helpers;
 
 use engine::AfrimEngine;
+use helpers::{encode_commands, make_cstring};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use helpers::{encode_commands, make_cstring};
-
 
 /// Create an `AfrimEngine` from the TOML config file at `config_path`.
 ///

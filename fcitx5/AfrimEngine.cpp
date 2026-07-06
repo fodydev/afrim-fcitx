@@ -2,7 +2,7 @@
 
 #include <fcitx-utils/key.h>
 #include <fcitx-utils/keysym.h>
-#include <fcitx-utils/log.h>
+#include <fcitx-utils/standardpath.h>
 #include <fcitx/candidatelist.h>
 #include <fcitx/inputcontext.h>
 #include <fcitx/inputpanel.h>
@@ -13,6 +13,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+FCITX_DEFINE_LOG_CATEGORY(AFRIM_LOG_CATEGORY, "afrim");
 
 // Anonymous namespace
 namespace {
@@ -31,17 +33,11 @@ public:
 
     void select(fcitx::InputContext *ic) const override {
         // Commit the candidate to the user.
+        // Note that, we commit directly.
         ic->commitString(text_);
+        afrim_engine_reset(engine_->rustEngine());
 
-        // Commit the candidate to afrim only to clear the input.
-        char *cmds =
-            afrim_engine_commit_candidate(engine_->rustEngine(), text_.c_str());
-        if (cmds) {
-            engine_->applyCommands(ic, cmds);
-            afrim_string_free(cmds);
-        }
-
-        engine_->updateUI(ic);
+        engine_->clearUI(ic);
     }
 
 private:
@@ -59,63 +55,15 @@ private:
     }
 };
 
-/**
- * Determine the UTF-8 string produced by `key` from fcitx5's key event.
- *
- * For printable ASCII and Unicode (keysym >= 0x01000000) we derive the UTF-8
- * sequence directly from the keysym value rather than relying on
- * XLookupString, which would not be available in a Wayland session.
- */
-std::string keyToUtf8(const fcitx::Key &key) {
-    const uint32_t sym = static_cast<uint32_t>(key.sym());
-
-    // Unicode keysyms live at 0x01000000 + UCS-4 codepoint.
-    uint32_t ucs4 = 0;
-    if (sym >= 0x01000000 && sym <= 0x0110FFFF) {
-        ucs4 = sym - 0x01000000;
-    } else if (sym >= 0x0020 && sym <= 0x007E) {
-        ucs4 = sym; // plain ASCII
-    } else {
-        // For legacy keysyms that represent printable characters (Latin-1
-        // supplement 0x00A0-0x00FF), keyboard_types can still accept the
-        // keysym directly in the Rust mapping, so return "" here and let Rust
-        // fall back to the keysym path.
-        return {};
-    }
-
-    if (ucs4 == 0)
-        return {};
-
-    // Encode UCS-4 to UTF-8.
-    std::string out;
-    if (ucs4 < 0x80) {
-        out += static_cast<char>(ucs4);
-    } else if (ucs4 < 0x800) {
-        out += static_cast<char>(0xC0 | (ucs4 >> 6));
-        out += static_cast<char>(0x80 | (ucs4 & 0x3F));
-    } else if (ucs4 < 0x10000) {
-        out += static_cast<char>(0xE0 | (ucs4 >> 12));
-        out += static_cast<char>(0x80 | ((ucs4 >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (ucs4 & 0x3F));
-    } else {
-        out += static_cast<char>(0xF0 | (ucs4 >> 18));
-        out += static_cast<char>(0x80 | ((ucs4 >> 12) & 0x3F));
-        out += static_cast<char>(0x80 | ((ucs4 >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (ucs4 & 0x3F));
-    }
-    return out;
-}
-
 /** Determine the default afrim config path. */
 std::string defaultConfigPath() {
     // $AFRIM_CONFIG overrides the default location.
     if (const char *env = std::getenv("AFRIM_CONFIG"); env && *env) {
         return env;
     }
-    const char *home = std::getenv("HOME");
-    if (!home || !*home)
-        home = "/root";
-    return std::string(home) + "/.config/fcitx5/afrim/config.toml";
+    return fcitx::StandardPaths::global().userDirectory(
+               fcitx::StandardPathsType::PkgConfig) /
+           "afrim/config.toml";
 }
 
 } // anonymous namespace
@@ -124,14 +72,14 @@ std::string defaultConfigPath() {
 AfrimInputMethodEngine::AfrimInputMethodEngine(fcitx::Instance *instance)
     : instance_(instance) {
     const std::string path = defaultConfigPath();
-    FCITX_INFO() << "[afrim] Loading configuration from: " << path;
+    AFRIM_INFO() << "[afrim] Loading configuration from: " << path;
     engine_ = afrim_engine_create(path.c_str());
     if (!engine_) {
-        FCITX_WARN() << "[afrim] Engine creation failed. "
-                        "Ensure the config exists at: "
-                     << path << "  (override with $AFRIM_CONFIG)";
+        AFRIM_ERROR() << "[afrim] Engine creation failed. "
+                         "Ensure the config exists at: "
+                      << path << "  (override with $AFRIM_CONFIG)";
     } else {
-        FCITX_INFO() << "[afrim] Engine loaded from: " << path;
+        AFRIM_INFO() << "[afrim] Engine loaded from: " << path;
     }
 }
 
@@ -173,7 +121,6 @@ void AfrimInputMethodEngine::reset(const fcitx::InputMethodEntry &,
     if (engine_) {
         afrim_engine_reset(engine_);
     }
-    output.clear();
     clearUI(event.inputContext());
 }
 
@@ -188,7 +135,7 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
 
     auto *ic = event.inputContext();
     const auto &key = event.key();
-    const uint32_t sym = static_cast<uint32_t>(key.sym());
+    const auto sym = key.sym();
 
     // If we already have active input, we absorb the event regardless of
     // whether the new key advances the sequence. This ensures that Escape,
@@ -226,9 +173,9 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
             event.filterAndAccept();
             return;
         }
-        // Commit the output text as-is.
+        // Commit the preedit text as-is.
         if (sym == FcitxKey_space || sym == FcitxKey_KP_Space) {
-            ic->commitString(output);
+            ic->commitString(preedit);
             reset(im_entry, event);
             return;
         }
@@ -259,24 +206,32 @@ void AfrimInputMethodEngine::keyEvent(const fcitx::InputMethodEntry &im_entry,
     // Let pass the backspace event when the input is not active.
     else if (sym == FcitxKey_BackSpace) {
         return;
+    } else {
+        // We clear the preedit since there is no sequence.
+        preedit.clear();
     }
     // Feed the key to the Rust engine.
-    const std::string keyStr = keyToUtf8(key);
+    const std::string keyStr = fcitx::Key::keySymToUTF8(sym);
 
-    FCITX_INFO() << "[afrim] process: " << sym << " (" << keyStr << ")";
+    AFRIM_DEBUG() << "[afrim] process: " << sym << " (" << keyStr << ")";
     char *cmds = afrim_engine_process_key(engine_, sym, keyStr.c_str());
-    FCITX_INFO() << "[afrim] cursor: " << afrim_engine_get_input(engine_);
 
     // Check if the input changed after processing
     char *postBuf = afrim_engine_get_input(engine_);
+    AFRIM_DEBUG() << "[afrim] cursor: " << postBuf;
     bool hasInput = postBuf && *postBuf;
     afrim_string_free(postBuf);
 
-    // Clear the output if input is empty.
+    // Clear the preedit if input is empty.
     if (hasInput) {
-        output.append(keyStr);
+        // Prevent an unwanted backspace char in the preedit.
+        // Except it, the other characters are safe since afrim will reset
+        // in case of detected non printable characters.
+        if (sym != FcitxKey_BackSpace) {
+            preedit.append(keyStr);
+        }
     } else {
-        output.clear();
+        preedit.clear();
     }
 
     applyCommands(ic, cmds);
@@ -298,16 +253,16 @@ void AfrimInputMethodEngine::applyCommands(fcitx::InputContext *ic,
     std::istringstream stream(cmds);
     std::string line;
     while (std::getline(stream, line)) {
-        FCITX_INFO() << "[afrim] command: " << line;
-        FCITX_INFO() << "[afrim] output before: " << output;
+        AFRIM_DEBUG() << "[afrim] command: " << line;
+        AFRIM_DEBUG() << "[afrim] preedit before: " << preedit;
         if (line.compare(0, 7, "commit:") == 0) {
-            output.append(line.substr(7));
+            preedit.append(line.substr(7));
         } else if (line.compare(0, 7, "delete:") == 0) {
             int step = line.substr(6).size() - 1;
-            FCITX_INFO() << "[afrim] delele step: " << step;
-            output = output.substr(0, output.size() - (step ? step : 1));
+            AFRIM_DEBUG() << "[afrim] delele step: " << step;
+            preedit = preedit.substr(0, preedit.size() - (step ? step : 1));
         }
-        FCITX_INFO() << "[afrim] output after: " << output;
+        AFRIM_DEBUG() << "[afrim] preedit after: " << preedit;
     }
 }
 
@@ -322,10 +277,10 @@ void AfrimInputMethodEngine::updateUI(fcitx::InputContext *ic) {
     ic->inputPanel().setAuxUp(
         fcitx::Text(input, fcitx::TextFormatFlag::Underline));
 
-    fcitx::Text preedit;
-    preedit.append(output, fcitx::TextFormatFlag::Underline);
-    preedit.setCursor(static_cast<int>(output.size()));
-    ic->inputPanel().setClientPreedit(preedit);
+    // Preedit
+    fcitx::Text cPreedit(preedit, fcitx::TextFormatFlag::Underline);
+    cPreedit.setCursor(static_cast<int>(preedit.size()));
+    ic->inputPanel().setClientPreedit(cPreedit);
     ic->updatePreedit();
 
     // Candidate list

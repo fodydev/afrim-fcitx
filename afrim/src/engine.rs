@@ -4,7 +4,6 @@ use afrim_preprocessor::{Key, KeyState, KeyboardEvent, NamedKey};
 use afrim_translator::{Predicate, Translator};
 use std::{path::Path, rc::Rc};
 
-
 /// Owns a `Preprocessor` and a `Translator` initialised from a TOML config
 /// file. This struct is intentionally **not** `Send` / `Sync` (inherited from
 /// `Preprocessor` which uses `Rc<Node>`).
@@ -24,7 +23,11 @@ impl AfrimEngine {
             .as_ref()
             .and_then(|c| c.auto_commit)
             .unwrap_or(false);
-        let buffer_size = config.core.as_ref().and_then(|c| c.buffer_size).unwrap_or(64);
+        let buffer_size = config
+            .core
+            .as_ref()
+            .and_then(|c| c.buffer_size)
+            .unwrap_or(64);
 
         // Preprocessor
         let data_map = config.extract_data();
@@ -51,7 +54,7 @@ impl AfrimEngine {
                 }
                 Err(e) => {
                     // Non-fatal: log and continue without scripts.
-                    eprintln!("[afrim-fcitx5] Failed to load translators: {e}");
+                    eprintln!("[afrim] Failed to load translators: {e}");
                 }
             }
         }
@@ -66,14 +69,8 @@ impl AfrimEngine {
     ///
     /// Returns the commands generated after the event. An empty return
     /// means the key did not trigger any afrim action.
-    pub fn process_key(
-        &mut self,
-        keysym: u32,
-        key_str: &str,
-    ) -> Vec<Command> {
+    pub fn process_key(&mut self, keysym: u32, key_str: &str) -> Vec<Command> {
         // Map the X11 keysym to a keyboard_types Key.
-            // Unrecognised key (function keys, media keys, ...),  don't disturb
-            // the preprocessor state.
         let key = keysym_to_key(keysym, key_str);
 
         let event = KeyboardEvent {
@@ -124,30 +121,18 @@ impl AfrimEngine {
 }
 
 /// Map an X11 keysym (plus an optional UTF-8 key label from fcitx5) to a
-/// `keyboard_types::Key`. Returns `None` for keys that afrim should not
+/// `keyboard_types::Key`. Returns a null key for keys that afrim should not
 /// see (function keys, media keys, modifier-only events, etc.).
 fn keysym_to_key(keysym: u32, key_str: &str) -> afrim_preprocessor::Key {
     let key = match keysym {
         // Named keys that afrim recognises
-        0xFF08 => Some(Key::Named(NamedKey::Backspace)),
+        0xFF08 => Key::Named(NamedKey::Backspace),
+        0xFFE1 | 0xFFE2 => Key::Named(NamedKey::Shift),
+        0xFFE5 | 0xFFE6 => Key::Named(NamedKey::CapsLock),
         // If fcitx5 provided a printable key string, use it.
-        _ if !key_str.is_empty() => {
-            Some(Key::Character(key_str.into()))
-        }
-        // Printable ASCII (basic Latin)
-        0x0020..=0x007E => {
-            char::from_u32(keysym).map(|c| Key::Character(c.to_string()))
-        }
-
-        // Non-ASCII printable (Latin extended, CJK, ...)
-        // X11 Unicode keysyms sit at 0x01000000 + UCS-4 codepoint.
-        0x01000080..=0x0110FFFF => {
-            let ucs4 = keysym - 0x01000000;
-            char::from_u32(ucs4).map(|c| Key::Character(c.to_string()))
-        }
-
-        _ => None
+        _ if !key_str.is_empty() => Key::Character(key_str.into()),
+        _ => Default::default(),
     };
 
-    key.unwrap_or_default()
+    key
 }

@@ -42,20 +42,19 @@ fcitx5 -r
 
 | CMake option | Default | Effect |
 |---|---|---|
-| `-DAFRIM_INHIBIT=ON` | OFF | Suppresses non defined characters in the application. |
 | `-DAFRIM_FEATURES="rhai"` | `rhai,strsim` | Override the extra Cargo feature list. |
 
 Example for an Amharic IME:
 ```bash
-cmake -Bbuild -DAFRIM_INHIBIT=ON
+cmake -Bbuild -DAFRIM_FEATURES="rhai,strsim"
 ```
 
 ---
 
 ### Configuration
 
-See the [afrim-config docs](https://docs.rs/afrim-config/0.4.7/afrim_config/)
-for the full config reference.
+See the [afrim-config docs](https://fodydev.github.io/afrim-man/configuration/index.html)
+for the manual reference.
 
 Additionally, you can download ready to use dataset at [afrim-data](https://github.com/fodydev/afrim-data)
 

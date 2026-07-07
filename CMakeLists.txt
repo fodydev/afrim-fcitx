@@ -21,20 +21,9 @@ include(FeatureSummary)
 # Rust library
 
 # Feature selection:
-#   cmake .. -DAFRIM_INHIBIT=ON          # enable inhibit for non-Latin scripts
 #   cmake .. -DAFRIM_FEATURES="rhai"     # override extra features
-option(AFRIM_INHIBIT
-    "Build with the 'inhibit' feature (suppresses intermediate Latin chars)"
-    OFF)
 set(AFRIM_FEATURES "rhai,strsim"
     CACHE STRING "Comma-separated extra Cargo features (appended to defaults)")
-
-# Build the full feature string.
-if(AFRIM_INHIBIT)
-    set(_CARGO_FEATURES "inhibit,${AFRIM_FEATURES}")
-else()
-    set(_CARGO_FEATURES "${AFRIM_FEATURES}")
-endif()
 
 # Corrosion tools
 include(FetchContent)
@@ -53,7 +42,7 @@ endif()
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 corrosion_import_crate(
 	MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/afrim/Cargo.toml"
-	FEATURES ${_CARGO_FEATURES}
+	FEATURES ${CARGO_FEATURES}
 )
 corrosion_experimental_cbindgen(
         TARGET afrim_capi

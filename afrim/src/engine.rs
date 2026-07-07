@@ -28,6 +28,11 @@ impl AfrimEngine {
             .as_ref()
             .and_then(|c| c.buffer_size)
             .unwrap_or(64);
+        let min_confidence = config
+            .core
+            .as_ref()
+            .and_then(|c| c.min_confidence)
+            .unwrap_or(0.7);
 
         // Preprocessor
         let data_map = config.extract_data();
@@ -42,7 +47,10 @@ impl AfrimEngine {
 
         // Translator
         let translation = config.extract_translation();
-        let mut translator = Translator::new(translation, auto_commit);
+        #[cfg(not(feature = "rhai"))]
+        let translator = Translator::new(translation, auto_commit, min_confidence);
+        #[cfg(feature = "rhai")]
+        let mut translator = Translator::new(translation, auto_commit, min_confidence);
 
         #[cfg(feature = "rhai")]
         {

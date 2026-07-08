@@ -42,7 +42,7 @@ endif()
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 corrosion_import_crate(
 	MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/afrim/Cargo.toml"
-	FEATURES ${CARGO_FEATURES}
+	FEATURES ${AFRIM_FEATURES}
 )
 corrosion_experimental_cbindgen(
         TARGET afrim_capi

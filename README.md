@@ -11,18 +11,19 @@ backed by the [afrim](https://github.com/fodydev/afrim) IME framework.
 |---|---|
 | Rust / Cargo | >= 1.75 |
 | CMake | >= 3.22 |
+| corrosion | >= 0.6 |
 | fcitx5 | >= 5.0 |
 | KDE Extra CMake Modules (ECM) | >= 1.0 |
 | C++ compiler | C++20 |
 
 On Debian/Ubuntu:
 ```bash
-sudo apt install fcitx5-dev extra-cmake-modules cmake build-essential
+sudo apt install fcitx5-dev extra-cmake-modules cmake build-essential corrosion
 ```
 
 On Arch Linux:
 ```bash
-sudo pacman -S fcitx5 extra-cmake-modules cmake base-devel rust
+sudo pacman -S fcitx5 extra-cmake-modules cmake base-devel rust corrosion
 ```
 
 ---

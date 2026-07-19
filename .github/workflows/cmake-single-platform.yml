@@ -24,7 +24,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: pacman -Sy --noconfirm abuild rpm-tools dpkg cmake fcitx5 rust cargo debugedit sudo && git clone https://aur.archlinux.org/yay.git && chown -R nobody yay && cd yay && sudo -u nobody makepkg -si && yay -S dh-make corrosion
+      run: pacman -Sy --noconfirm abuild rpm-tools dpkg cmake fcitx5 rust cargo debugedit sudo go && git clone https://aur.archlinux.org/yay.git && chown -R nobody yay && cd yay && sudo -u nobody makepkg -si && yay -S dh-make corrosion
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.

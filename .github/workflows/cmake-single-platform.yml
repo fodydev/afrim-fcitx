@@ -26,6 +26,9 @@ jobs:
     - name: Install dependencies
       run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo
 
+    - name: Download corrosion
+      run: git clone --depth 1 https://github.com/corrosion-rs/corrosion.git
+
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type

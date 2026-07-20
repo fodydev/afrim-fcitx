@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(afrim_fcitx5 VERSION 0.1.0 LANGUAGES C CXX)
+project(afrim_fcitx5 VERSION 0.1.0 DESCRIPTION "Afrim input method engine for Fcitx5" LANGUAGES C CXX)
 set(AFRIM_LIBNAME libafrim)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -17,6 +17,16 @@ find_package(Fcitx5Core REQUIRED)
 
 include(GNUInstallDirs)
 include(FeatureSummary)
+
+# CPACK
+set(CPACK_PACKAGE_CONTACT "brady.fomegne@outlook.com")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_RPM_PACKAGE_LICENSE "GPLv2")
+set(CPACK_GENERATOR "DEB;RPM;STGZ")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_RPM_PACKAGE_AUTOREQPROV ON)
+include(CPack)
 
 find_package(Corrosion REQUIRED)
 

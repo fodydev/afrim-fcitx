@@ -1,0 +1,89 @@
+name: CMake on a single platform
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+env:
+  BUILD_TYPE: Release
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache pacman packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/pacman/pkg
+        key: ${{ runner.os }}-pacman-${{ hashFiles('.github/workflows/*.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-pacman-
+
+    - name: Install dependencies
+      run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo github-cli coreutils
+
+    - name: Cache cargo registry and git deps
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('afrim/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+        
+    - name: Cache corrosion build
+      id: cache-corrosion
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/lib/cmake/Corrosion
+          /usr/local/share/cmake/Corrosion*
+          /usr/local/share/cmake/FindRust.cmake
+        key: ${{ runner.os }}-corrosion-v0.6
+
+    - name: Build and install corrosion
+      if: steps.cache-corrosion.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 --branch v0.6 https://github.com/corrosion-rs/corrosion.git
+        cmake -S corrosion -B corrosion/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake --build corrosion/build --config ${{env.BUILD_TYPE}}
+        cmake --install corrosion/build
+
+    - name: Cache CMake build directory
+      uses: actions/cache@v4
+      with:
+        path: build
+        key: ${{ runner.os }}-cmake-build-${{ hashFiles('CMakeLists.txt', 'afrim/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-build-
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Package
+      run: |
+        cd build && cpack -C ${{ env.BUILD_TYPE }} -B packages
+
+    - name: Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      shell: bash
+      run: |
+        VERSION=$(grep -Po '(?<=VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)-edge
+        gh release delete -y --cleanup-tag --repo "${{ github.repository }}" $VERSION || true
+        gh release create --repo "${{ github.repository }}" $VERSION
+        for pkg in build/packages/*.*; do
+          sha256sum $pkg > $pkg.sha256
+          gh release upload \
+            --repo "${{ github.repository }}" \
+            --clobber $VERSION $pkg $pkg.sha256          
+        done

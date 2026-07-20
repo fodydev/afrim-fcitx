@@ -49,7 +49,7 @@ jobs:
     - name: Build and install corrosion
       if: steps.cache-corrosion.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 --branch v0.5 https://github.com/corrosion-rs/corrosion.git
+        git clone --depth 1 --branch v0.6 https://github.com/corrosion-rs/corrosion.git
         cmake -S corrosion -B corrosion/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
         cmake --build corrosion/build --config ${{env.BUILD_TYPE}}
         cmake --install corrosion/build

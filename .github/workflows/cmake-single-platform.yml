@@ -83,6 +83,7 @@ jobs:
       run: |
         gh release create "${{ steps.version.outputs.version }}" \
           ${{ github.workspace }}/build/packages/*
+          --repo "${{ github.repository }}" \
           --title "${{ steps.version.outputs.version }}" \
           --notes "Automated release for ${{ steps.version.outputs.version }}" \
           --target ${{ github.sha }} \

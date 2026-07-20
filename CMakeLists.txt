@@ -23,18 +23,9 @@ set(CPACK_PACKAGE_CONTACT "brady.fomegne@outlook.com")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 set(CPACK_RPM_PACKAGE_LICENSE "GPLv2")
-
 set(CPACK_GENERATOR "DEB;RPM;STGZ")
-set(CPACK_SOURCE_GENERATOR "TGZ;ZIP")
-set(CPACK_SOURCE_IGNORE_FILES
-    "/\\\\.git/"
-    "/\\\\.github/"
-    "/build/"
-    "/target/"
-    "\\\\.gitignore$"
-)
-
-set(CPACK_RPM_PACKAGE_LICENSE "GPLv2")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_RPM_PACKAGE_AUTOREQPROV ON)
 include(CPack)
 
 find_package(Corrosion REQUIRED)

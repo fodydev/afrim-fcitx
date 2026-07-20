@@ -83,6 +83,6 @@ jobs:
         for pkg in ${{ github.workspace }}/build/packages/*.*; do
           sha256sum $pkg > $pkg.sha256
           gh release upload \
-            --repo "${{ github.repository }}" \\
+            --repo "${{ github.repository }}" \
             --clobber $VERSION $pkg $pkg.sha256          
         done

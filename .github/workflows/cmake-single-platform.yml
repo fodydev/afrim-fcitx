@@ -80,5 +80,10 @@ jobs:
       # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       env:
         GH_TOKEN: ${{ github.token }}
+      shell: bash
       run: |
-        ls ${{ github.workspace }}/build/packages/*
+        for pkg in ${{ github.workspace }}/build/packages/*.*; do
+          shasum -a 256 $pkg > $pkg.sha256
+          gh release delete -y --cleanup-tag ${{ env.version }}
+          gh release upload ${{ env.version }} $pkg $pkg.sha256          
+        done

@@ -20,8 +20,6 @@ jobs:
       with:
         path: /var/cache/pacman/pkg
         key: ${{ runner.os }}-pacman-${{ hashFiles('.github/workflows/*.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-pacman-
 
     - name: Install dependencies
       run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo github-cli
@@ -32,7 +30,7 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+        key: ${{ runner.os }}-cargo-${{ hashFiles('afrim/Cargo.toml') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
 
@@ -59,8 +57,6 @@ jobs:
       with:
         path: ${{ github.workspace }}/build
         key: ${{ runner.os }}-cmake-build-${{ hashFiles('CMakeLists.txt', 'afrim/Cargo.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-cmake-build-
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
@@ -70,7 +66,7 @@ jobs:
 
     - name: Package
       run: |
-        cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build
+        cd ${{ github.workspace }}/build && cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
         ls ${{ github.workspace }}/build
 
     - name: Read project version

@@ -69,7 +69,9 @@ jobs:
       run: cmake --build ${{github.workspace}}/build
 
     - name: Package
-      run: cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
+      run: |
+        cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build
+        ls ${{ github.workspace }}/build
 
     - name: Read project version
       # if: github.ref == 'refs/heads/main' && github.event_name == 'push'

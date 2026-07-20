@@ -71,7 +71,6 @@ jobs:
     - name: Package
       run: |
         cd ${{ github.workspace }}/build && cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
-        ls ${{ github.workspace }}/build
 
     - name: Release
       # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -84,7 +83,6 @@ jobs:
         for pkg in ${{ github.workspace }}/build/packages/*.*; do
           sha256sum $pkg > $pkg.sha256
           gh release upload \
-            --repo "${{ github.repository }}" \
-            --target ${{ github.sha }} \
+            --repo "${{ github.repository }}" \\
             --clobber $VERSION $pkg $pkg.sha256          
         done

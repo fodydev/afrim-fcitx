@@ -81,7 +81,7 @@ jobs:
       shell: bash
       run: |
         for pkg in ${{ github.workspace }}/build/packages/*.*; do
-          shasum -a 256 $pkg > $pkg.sha256
+          sha256sum $pkg > $pkg.sha256
           gh release delete -y --cleanup-tag ${{ env.version }}
           gh release upload ${{ env.version }} $pkg $pkg.sha256          
         done

@@ -82,6 +82,6 @@ jobs:
         VERSION=$(grep -Po '(?<=VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)
         for pkg in ${{ github.workspace }}/build/packages/*.*; do
           sha256sum $pkg > $pkg.sha256
-          gh release delete -y --cleanup-tag $VERSION
-          gh release upload $VERSION $pkg $pkg.sha256          
+          gh release delete -y --cleanup-tag --repo "${{ github.repository }}" $VERSION
+          gh release upload --repo "${{ github.repository }}" $VERSION $pkg $pkg.sha256          
         done

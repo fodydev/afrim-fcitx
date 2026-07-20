@@ -70,7 +70,7 @@ jobs:
 
     - name: Package
       run: |
-        cd build && cpack -C ${{ env.BUILD_TYPE }} -B packages
+        cd build && cpack -C ${{ env.BUILD_TYPE }} -B ../packages
 
     - name: Release
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -81,7 +81,7 @@ jobs:
         VERSION=$(grep -Po '(?<=VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)-edge
         gh release delete -y --cleanup-tag --repo "${{ github.repository }}" $VERSION || true
         gh release create --repo "${{ github.repository }}" $VERSION
-        for pkg in build/packages/*.*; do
+        for pkg in packages/*.*; do
           sha256sum $pkg > $pkg.sha256
           gh release upload \
             --repo "${{ github.repository }}" \

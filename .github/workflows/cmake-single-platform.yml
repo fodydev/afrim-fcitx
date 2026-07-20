@@ -6,6 +6,8 @@ on:
     branches: [ "main" ]
 env:
   BUILD_TYPE: Release
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,7 +24,7 @@ jobs:
           ${{ runner.os }}-pacman-
 
     - name: Install dependencies
-      run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo
+      run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo github-cli
 
     - name: Cache cargo registry and git deps
       uses: actions/cache@v4
@@ -34,9 +36,20 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
+    - name: Cache corrosion build
+      id: cache-corrosion
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/lib/cmake/Corrosion
+          /usr/local/share/cmake/Corrosion*
+          /usr/local/share/cmake/FindRust.cmake
+        key: ${{ runner.os }}-corrosion-v0.6
+
     - name: Build and install corrosion
+      if: steps.cache-corrosion.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 https://github.com/corrosion-rs/corrosion.git
+        git clone --depth 1 --branch v0.5 https://github.com/corrosion-rs/corrosion.git
         cmake -S corrosion -B corrosion/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
         cmake --build corrosion/build --config ${{env.BUILD_TYPE}}
         cmake --install corrosion/build
@@ -45,16 +58,18 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/build
-        key: ${{ runner.os }}-cmake-build-${{ hashFiles('**/CMakeLists.txt', '**/Cargo.toml') }}
+        key: ${{ runner.os }}-cmake-build-${{ hashFiles('CMakeLists.txt', 'afrim/Cargo.toml') }}
         restore-keys: |
           ${{ runner.os }}-cmake-build-
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-    - name: Release
-      run: cd ${{github.workspace}}/build && cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
+      run: cmake --build ${{github.workspace}}/build
+
+    - name: Package
+      run: cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
 
     - name: Read project version
       # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -69,7 +84,8 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh release create "${{ steps.version.outputs.version }}" \
-          ${{ github.workspace }}/build/packages/* \
+          ${{ github.workspace }}/build/packages/*
           --title "${{ steps.version.outputs.version }}" \
           --notes "Automated release for ${{ steps.version.outputs.version }}" \
           --target ${{ github.sha }} \
+          --clobber

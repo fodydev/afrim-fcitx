@@ -17,6 +17,7 @@ find_package(Fcitx5Core REQUIRED)
 
 include(GNUInstallDirs)
 include(FeatureSummary)
+include(CPack)
 
 find_package(Corrosion REQUIRED)
 

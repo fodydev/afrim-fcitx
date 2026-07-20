@@ -65,4 +65,22 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
     - name: Release
-      run: cd ${{github.workspace}}/build && cpack -C ${{ env.BUILD_TYPE }}
+      run: cd ${{github.workspace}}/build && cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
+
+    - name: Read project version
+      # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      id: version
+      run: |
+        VERSION=$(grep -Po '(?<=VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)
+        echo "version=v$VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Release
+      # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "${{ steps.version.outputs.version }}" \
+          ${{ github.workspace }}/build/packages/* \
+          --title "${{ steps.version.outputs.version }}" \
+          --notes "Automated release for ${{ steps.version.outputs.version }}" \
+          --target ${{ github.sha }} \

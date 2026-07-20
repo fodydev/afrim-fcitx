@@ -22,7 +22,7 @@ jobs:
         key: ${{ runner.os }}-pacman
 
     - name: Install dependencies
-      run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo github-cli shasum
+      run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo github-cli coreutils
 
     - name: Cache cargo registry and git deps
       uses: actions/cache@v4

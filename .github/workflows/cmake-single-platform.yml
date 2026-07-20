@@ -19,7 +19,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /var/cache/pacman/pkg
-        key: ${{ runner.os }}-pacman
+        key: ${{ runner.os }}-pacman-${{ hashFiles('.github/workflows/*.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-pacman-
 
     - name: Install dependencies
       run: pacman -Sy --noconfirm base-devel abuild rpm-tools dpkg extra-cmake-modules cmake fcitx5 rust cargo github-cli coreutils
@@ -30,7 +32,9 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-        key: ${{ runner.os }}-cargo
+        key: ${{ runner.os }}-cargo-${{ hashFiles('afrim/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
         
     - name: Cache corrosion build
       id: cache-corrosion
@@ -54,7 +58,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/build
-        key: ${{ runner.os }}-cmake-build
+        key: ${{ runner.os }}-cmake-build-${{ hashFiles('CMakeLists.txt', 'afrim/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-build-
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
@@ -67,21 +73,15 @@ jobs:
         cd ${{ github.workspace }}/build && cpack -C ${{ env.BUILD_TYPE }} -B ${{ github.workspace }}/build/packages
         ls ${{ github.workspace }}/build
 
-    - name: Read project version
-      # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      id: version
-      run: |
-        VERSION=$(grep -Po '(?<=VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)
-        echo "version=v$VERSION" >> "$GITHUB_OUTPUT"
-
     - name: Release
       # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       env:
         GH_TOKEN: ${{ github.token }}
       shell: bash
       run: |
+        VERSION=$(grep -Po '(?<=VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)
         for pkg in ${{ github.workspace }}/build/packages/*.*; do
           sha256sum $pkg > $pkg.sha256
-          gh release delete -y --cleanup-tag ${{ env.version }}
-          gh release upload ${{ env.version }} $pkg $pkg.sha256          
+          gh release delete -y --cleanup-tag $VERSION
+          gh release upload $VERSION $pkg $pkg.sha256          
         done

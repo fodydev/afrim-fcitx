@@ -85,7 +85,6 @@ jobs:
           sha256sum $pkg > $pkg.sha256
           gh release upload \
             --repo "${{ github.repository }}" \
-            --notes "Automated release for $VERSION" \
             --target ${{ github.sha }} \
             --clobber $VERSION $pkg $pkg.sha256          
         done

@@ -34,18 +34,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Cache corrosion build
-      id: cache-corrosion
-      uses: actions/cache@v4
-      with:
-        path: |
-          corrosion
-          /usr/local/lib/cmake/Corrosion
-          /usr/local/lib/libcorrosion*
-        key: ${{ runner.os }}-corrosion-v0.5
-
     - name: Build and install corrosion
-      if: steps.cache-corrosion.outputs.cache-hit != 'true'
       run: |
         git clone --depth 1 https://github.com/corrosion-rs/corrosion.git
         cmake -S corrosion -B corrosion/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}

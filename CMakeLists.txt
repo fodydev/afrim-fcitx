@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(afrim_fcitx5 VERSION 0.1.0 DESCRIPTION "Afrim input method engine for Fcitx5" LANGUAGES C CXX)
+project(fcitx5_afrim VERSION 0.1.0 DESCRIPTION "Afrim input method engine for Fcitx5" LANGUAGES C CXX)
 set(AFRIM_LIBNAME libafrim)
 
 set(CMAKE_CXX_STANDARD 20)
